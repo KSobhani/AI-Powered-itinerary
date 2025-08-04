@@ -1,0 +1,28 @@
+{
+  "name": "itinerary-generator",
+  "version": "1.0.0",
+  "description": "Serverless AI‑powered travel itinerary generator built with Cloudflare Workers, Firestore and OpenAI GPT.",
+  "type": "module",
+  "main": "src/worker.js",
+  "scripts": {
+    "start": "wrangler dev",
+    "build": "wrangler publish"
+  },
+  "keywords": [
+    "cloudflare",
+    "serverless",
+    "openai",
+    "firestore",
+    "itinerary",
+    "travel"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "openai": "^4.26.0",
+    "firebase-admin": "^12.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.27.0"
+  }
+}

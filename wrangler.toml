@@ -1,0 +1,6 @@
+name = "itinerary-generator"
+main = "src/worker.js"
+compatibility_date = "2025-08-04"
+
+#It is not default!
+compatibility_flags = ["nodejs_compat"]
