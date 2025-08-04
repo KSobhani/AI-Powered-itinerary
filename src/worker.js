@@ -1,10 +1,39 @@
+//َAccess for UI
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+
 //Importing libraries
 
 import { OpenAI } from 'openai';
+import { z } from 'zod';
 
 // Initialize OpenAI client with API key from environment
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+});
+
+// Zod schema for validating LLM response
+const activitySchema = z.object({
+  time: z.enum(['Morning', 'Afternoon', 'Evening']),
+  description: z.string().min(1),
+  location: z.string().min(1),
+});
+
+const daySchema = z.object({
+  day: z.number().int().min(1),
+  theme: z.string().min(1),
+  activities: z.array(activitySchema).length(3),
+});
+
+const itinerarySchema = z.object({
+  destination: z.string().min(1),
+  durationDays: z.number().int().min(1),
+  itinerary: z.array(daySchema),
 });
 
 /**
@@ -104,8 +133,14 @@ async function generateItinerary(jobId, destination, durationDays) {
       console.error('JSON parse error:', err.message, err.stack);
       throw new Error('Invalid JSON returned by OpenAI: ' + err.message);
     }
-    if (!itineraryObj.itinerary || !Array.isArray(itineraryObj.itinerary)) {
-      throw new Error('Expected an "itinerary" array in the response');
+
+    // Validate the itinerary with Zod
+    try {
+      itinerarySchema.parse(itineraryObj);
+      console.log('Zod validation successful');
+    } catch (err) {
+      console.error('Zod validation error:', err.message, err.stack);
+      throw new Error('Invalid itinerary structure: ' + err.message);
     }
 
     // Update Firestore with completed status
@@ -196,6 +231,11 @@ export default {
    * @param {ExecutionContext} ctx Cloudflare execution context
    */
   async fetch(request, env, ctx) {
+    // Handle CORS preflight requests
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
     const { method } = request;
     const projectId = process.env.FIREBASE_PROJECT_ID;
 
@@ -207,18 +247,20 @@ export default {
         console.log('Parsed POST payload:', payload);
       } catch (err) {
         console.error('Invalid JSON body:', err.message, err.stack);
+        // Updated to include corsHeaders
         return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
           status: 400,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       const { destination, durationDays } = payload || {};
       if (typeof destination !== 'string' || !destination.trim() ||
           typeof durationDays !== 'number' || isNaN(durationDays) || durationDays < 1) {
         console.error('Invalid input:', { destination, durationDays });
+        // Updated to include corsHeaders
         return new Response(
           JSON.stringify({ error: 'Invalid input. Expect { destination: string, durationDays: integer >= 1 }' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -257,18 +299,20 @@ export default {
         console.log(`Firestore document created for jobId: ${jobId}`);
       } catch (err) {
         console.error('Failed to create Firestore document:', err.message, err.stack);
+        // Updated to include corsHeaders
         return new Response(JSON.stringify({ error: 'Failed to initiate job' }), {
           status: 500,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       // Schedule itinerary generation
       ctx.waitUntil(generateItinerary(jobId, destination, durationDays));
       console.log(`Returning 202 response with jobId: ${jobId}`);
+      // Updated to include corsHeaders
       return new Response(JSON.stringify({ jobId }), {
         status: 202,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -278,9 +322,10 @@ export default {
       const jobId = url.searchParams.get('jobId');
       if (!jobId) {
         console.error('Missing jobId query parameter');
+        // Updated to include corsHeaders
         return new Response(JSON.stringify({ error: 'Missing jobId query parameter' }), {
           status: 400,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       console.log(`Fetching Firestore document for jobId: ${jobId}`);
@@ -293,9 +338,10 @@ export default {
         if (!docResponse.ok) {
           if (docResponse.status === 404) {
             console.error(`Job not found for jobId: ${jobId}`);
+            // Updated to include corsHeaders
             return new Response(JSON.stringify({ error: 'Job not found' }), {
               status: 404,
-              headers: { 'Content-Type': 'application/json' },
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           }
           const error = await docResponse.text();
@@ -322,23 +368,26 @@ export default {
           })) || [],
           error: doc.fields.error?.stringValue || null,
         };
+        // Updated to include corsHeaders
         return new Response(JSON.stringify({ jobId, ...data }), {
           status: 200,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       } catch (err) {
         console.error('Error fetching Firestore document:', err.message, err.stack);
+        // Updated to include corsHeaders
         return new Response(JSON.stringify({ error: 'Failed to retrieve job' }), {
           status: 500,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
     }
 
     console.error(`Method not allowed: ${method}`);
+    // Updated to include corsHeaders
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   },
 };
