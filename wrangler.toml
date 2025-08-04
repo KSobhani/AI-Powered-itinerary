@@ -4,3 +4,6 @@ compatibility_date = "2025-08-04"
 
 #It is not default!
 compatibility_flags = ["nodejs_compat"]
+
+#for deploy
+[[env.production]]
