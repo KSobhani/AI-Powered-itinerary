@@ -11,6 +11,24 @@ This project is a serverless application that accepts a user request, uses a Lar
 * Firestore integration using REST API + JWT
 * Secrets handled securely with Wrangler
 * Structured JSON output
+* Zod validation
+* Automatic retries
+* Configurable via environment variables
+---
+
+## Front-end UI
+
+A simple Svelte UI is included for checking the status of any `jobId` and viewing the final itinerary. This UI is deployed separately via Cloudflare Pages.
+
+---
+
+## Deployment URLs
+
+| Component          | URL                                                             |
+|--------------------|-----------------------------------------------------------------|
+| Worker API         | [https://itinerary-generator-production.ai-powered.workers.dev] |
+| Status Checker UI  | [https://ai-powered-itinerary.pages.dev]                                   |
+
 ---
 
 ## Data Model
@@ -47,7 +65,8 @@ Documents in the `itineraries` collection use the following schema:
 ```
 /
 └── src/
-    └── worker.js          # Cloudflare Worker code
+    └── worker.js       # Cloudflare Worker code
+├── ui/                 # Svelte UI code for status checker
 ├── wrangler.toml       # Worker config
 ├── package.json        # Dependencies and scripts
 ├── .gitignore          # Ignore node_modules, .env, etc.
@@ -60,7 +79,7 @@ Documents in the `itineraries` collection use the following schema:
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/yourusername/ai-itinerary-worker.git
+git clone https://github.com/KSobhani/ai-itinerary-worker.git
 cd ai-itinerary-worker
 npm install
 ```
@@ -92,7 +111,14 @@ Note: Replace `--env=production` with `--env=""` if you are deploying to the def
 ```bash
 npx wrangler deploy --env=production
 ```
+## Deploy UI on Cloudflare Pages
 
+```bash
+cd ui
+npm install
+npm run build
+npx npx wrangler pages deploy .svelte-kit/output/client --project-name=ai-powered-itinerary
+```
 ---
 
 ## API Usage
@@ -102,7 +128,7 @@ npx wrangler deploy --env=production
 Submit a travel request:
 
 ```bash
-curl -X POST "https://your-worker.workers.dev" \
+curl -X POST "https://itinerary-generator-production.ai-powered.workers.dev" \
   -H "Content-Type: application/json" \
   -d '{"destination": "Tokyo, Japan", "durationDays": 3}'
 ```
@@ -123,7 +149,7 @@ Response:
 Check status of the itinerary:
 
 ```bash
-curl "https://your-worker.workers.dev/?jobId=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+curl "https://itinerary-generator-production.ai-powered.workers.dev/?jobId=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 ```
 
 Response example:
@@ -191,11 +217,11 @@ Each document in the `itineraries` collection looks like:
 
 ---
 
-## Optional Improvements (Not Implemented Yet)
+## Implemented Improvements
 
-* Add retry logic for failed LLM calls
-* Add Zod validation for LLM response
-* Create Svelte UI for status checker
+**Zod Validation** : Validates LLM responses to ensure they match the expected itinerary schema. Invalid responses are logged as status: "failed" in Firestore with a detailed error message.
+**Automatic Retries** : Implements retry with exponential backoff (1s, 2s, 4s delays with jitter) for OpenAI API errors (429, 5xx). Up to 3 retries are attempted before marking the job as failed.
+**Svelte UI** : A Svelte-based UI deployed on Cloudflare Pages to check itinerary status using the Worker’s GET endpoint.
 
 ---
 
@@ -203,5 +229,5 @@ Each document in the `itineraries` collection looks like:
 
 Developed for Stak.ai Technical Assessment — 2025.
 
-Contact: [kosarsobhani.work@example.com]
-GitHub: [https://github.com/KSobhani]
+Contact: [kosarsobhani.work@gmail.com](mailto:kosarsobhani.work@gmail.com)  
+GitHub: [KSobhani](https://github.com/KSobhani)
