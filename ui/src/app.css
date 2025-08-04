@@ -1,0 +1,44 @@
+body {
+  font-family: sans-serif;
+  background: #f9fafb;
+  padding: 2rem;
+  color: #333;
+}
+
+input {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+button {
+  margin-left: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #0070f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+}
+
+.status-completed {
+  color: green;
+  font-weight: bold;
+}
+
+.status-processing {
+  color: orange;
+  font-weight: bold;
+}
+
+.status-failed {
+  color: red;
+  font-weight: bold;
+}
+
+.itinerary {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
