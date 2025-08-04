@@ -7,3 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 
 #for deploy
 [[env.production]]
+
+# Environment variables for Worker: OpenAI Key, FireBase ProjectID, Client Email
+# and Private Key. The values for these variables should be set via 
+# `wrangler secret put` or through the Cloudflare dashboard, See the README for details.
