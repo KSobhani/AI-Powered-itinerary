@@ -6,7 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-
 //Importing libraries
 
 import { OpenAI } from 'openai';
@@ -102,6 +101,10 @@ async function generateItinerary(jobId, destination, durationDays) {
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const docUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/itineraries/${jobId}`;
   
+  // Retry configuration
+  const maxRetries = 3;
+  const baseDelay = 1000; // 1 second base delay for exponential backoff
+  
   try {
     // Compose the OpenAI prompt (enforced strict JSON output, and optimized it for token efficiency)
     const messages = [
@@ -115,14 +118,39 @@ async function generateItinerary(jobId, destination, durationDays) {
       },
     ];
 
-    console.log('Sending request to OpenAI');
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      temperature: 0.7,
-      messages,
-      response_format: { type: 'json_object' },
-    });
-    console.log('OpenAI response received');
+    let completion;
+    let attempt = 0;
+
+    // Retry logic with exponential backoff
+    while (attempt < maxRetries) {
+      try {
+        console.log(`Sending request to OpenAI (attempt ${attempt + 1}/${maxRetries})`);
+        completion = await openai.chat.completions.create({
+          model: 'gpt-4o',
+          temperature: 0.7,
+          messages,
+          response_format: { type: 'json_object' },
+        });
+        console.log('OpenAI response received');
+        break; // Success, exit retry loop
+      } catch (err) {
+        attempt++;
+        if (err.response?.status === 429 || err.response?.status >= 500) {
+          if (attempt >= maxRetries) {
+            console.error(`OpenAI request failed after ${maxRetries} attempts:`, err.message, err.stack);
+            throw new Error(`Failed to fetch from OpenAI after ${maxRetries} retries: ${err.message}`);
+          }
+          // Calculate delay with exponential backoff and jitter
+          const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 100;
+          console.log(`Retrying after ${delay}ms due to error: ${err.message}`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          // Non-retryable error
+          console.error('Non-retryable OpenAI error:', err.message, err.stack);
+          throw err;
+        }
+      }
+    }
 
     const content = completion.choices?.[0]?.message?.content ?? '{}';
     let itineraryObj;
